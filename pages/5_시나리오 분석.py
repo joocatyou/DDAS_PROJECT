@@ -76,7 +76,7 @@ def get_cumulative_coverage(dfs, df_rank, range_km):
     cumulative : list of float
         후보지를 하나씩 추가할 때마다의 누적 커버율(%) 목록
     """
-    df_all = pd.concat(dfs.values(), ignore_index=True)
+    df_all = dfs
     cover_result = building_cover(
         df_rank[['lat', 'lng']].values,
         df_all[['latitude', 'longitude']].values,
