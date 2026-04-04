@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>격자 생성기</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'Pretendard', -apple-system, sans-serif;
+  background: #f0f2f5;
+  color: #000000;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── 상단 툴바 ── */
+.toolbar {
+  height: 52px;
+  min-height: 52px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+}
+
+.toolbar::-webkit-scrollbar { display: none; }
+
+/* 타이틀 */
+
+/* 구분선 */
+.sep {
+  width: 1px;
+  height: 28px;
+  background: #e5e7eb;
+  flex-shrink: 0;
+  margin: 0 2px;
+}
+
+/* ── 슬라이더 그룹 ── */
+.slider-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.slider-group label {
+  font-size: 11px;
+  color: #6b7280;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.slider-group input[type=range] {
+  width: 90px;
+  accent-color: #000000;
+  cursor: pointer;
+}
+.slider-val {
+  font-size: 12px;
+  font-weight: 600;
+  color: #111827; /* 수치 텍스트 검은색 */
+  background: #f3f4f6; /* 연한 회색 배경 */
+  padding: 2px 7px;
+  border-radius: 5px;
+  min-width: 42px;
+  text-align: center;
+}
+
+/* ── 버튼 ── */
+.btn {
+  padding: 6px 12px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  height: 32px;
+}
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.14); }
+.btn:not(:disabled):active { transform: translateY(0); }
+
+
+.btn-primary   { background:#374151; color:#fff; border-color:#1f2937; } /* 진한 회색 */
+.btn-success   { background:#111827; color:#fff; border-color:#000; }    /* 검은색 (구역 생성) */
+.btn-warning   { background:#6b7280; color:#fff; border-color:#4b5563; } /* 중간 회색 */
+.btn-danger    { background:#fff;    color:#4b5563; border-color:#e5e7eb; } /* 테두리 회색 */
+.btn-secondary { background:#f3f4f6; color:#1f2937; border-color:#e5e7eb; } /* 밝은 회색 */
+.btn-download  { background:#111827; color:#fff; border-color:#000; }    /* 검은색 (저장 버튼) */
+
+/* ── 파일명 인풋 ── */
+.filename-input {
+  height: 30px;
+  padding: 0 9px;
+  border-radius: 7px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  font-size: 11px;
+  font-family: 'Courier New', monospace;
+  color: #374151;
+  outline: none;
+  width: 140px;
+  flex-shrink: 0;
+  transition: border-color 0.15s;
+}
+.filename-input:focus { border-color: #000000; background: #fff; }
+.filename-input::placeholder { color: #d1d5db; }
+
+/* ── 상태 칩 ── */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  color: #4b5563;
+}
+.status-chip.info    { background: #f9fafb; border-color: #e5e7eb; color: #1f2937; }
+.status-chip.success { background: #f3f4f6; border-color: #d1d5db; color: #111827; font-weight: 600; }
+.status-chip.loading { background: #ffffff; border-color: #e5e7eb; color: #6b7280; }
+
+/* ── 좌표 팝업 버튼 ── */
+.coords-trigger {
+  position: relative;
+  flex-shrink: 0;
+}
+.coords-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 7px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  font-size: 11px;
+  font-weight: 500;
+  color: #1e1e1e;
+  cursor: pointer;
+  height: 32px;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.coords-badge:hover { border-color: #000000; color: #000000; }
+.coord-count {
+  background: #374151; /* 꼭짓점 개수 표시 진한 회색 */
+  color: #fff;
+  border-radius: 10px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* ── 팝업 (꼭짓점 목록) ── */
+.popup {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  padding: 12px;
+  min-width: 200px;
+  z-index: 2000;
+  display: none;
+}
+.popup.show { display: block; }
+.popup-title {
+  font-size: 9px;
+  font-weight: 600;
+  color: #9ca3af;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.coords-list { display: flex; flex-direction: column; gap: 3px; max-height: 200px; overflow-y: auto; }
+.coord-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #f9fafb;
+  border: 1px solid #f0f2f5;
+}
+.coord-num {
+  width: 18px; height: 18px;
+  background: #ffffff;
+  color: #4b5563;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.coord-text { font-size: 10px; color: #6b7280; font-family: monospace; }
+.coords-empty { font-size: 11px; color: #d1d5db; text-align: center; padding: 6px 0; }
+
+
+/* ── 프로그레스 ── */
+.progress-bar {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: #e5e7eb;
+  display: none;
+}
+.progress-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #6366f1); width: 0%; transition: width 0.1s; }
+
+/* ── 지도 영역 ── */
+.map-wrap { flex: 1; position: relative; overflow: hidden; }
+#map { width: 100%; height: 100%; }
+.leaflet-container { background: #e8ecf0; }
+
+
+
+/* ── 저장 모달 ── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s;
+}
+.modal-backdrop.show {
+  opacity: 1;
+  pointer-events: all;
+}
+.modal {
+  background: #fff;
+  border-radius: 14px;
+  padding: 28px 28px 22px;
+  width: 340px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+  transform: translateY(12px);
+  transition: transform 0.18s;
+}
+.modal-backdrop.show .modal { transform: translateY(0); }
+.modal-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 4px;
+}
+.modal-sub {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-bottom: 18px;
+}
+.modal-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1.5px solid #e5e7eb;
+  background: #f9fafb;
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+  color: #374151;
+  outline: none;
+  transition: border-color 0.15s;
+  margin-bottom: 6px;
+}
+.modal-input:focus { border-color: #000000; background: #fff; }
+.modal-hint { font-size: 10px; color: #9ca3af; margin-bottom: 20px; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+canvas { display: none; }
+</style>
+</head>
+<body>
+
+<!-- ── 상단 툴바 ── -->
+<div class="toolbar">
+
+  <!-- 셀 간격 -->
+  <div class="slider-group">
+    <label>셀 간격</label>
+    <input type="range" id="gridM" min="50" max="500" value="100" step="50"
+           oninput="document.getElementById('gridMVal').textContent=this.value+'m'">
+    <span class="slider-val" id="gridMVal">100m</span>
+  </div>
+
+  <div class="sep"></div>
+
+  <!-- 실행 버튼 -->
+  <button class="btn btn-success" id="analyzeBtn" onclick="analyzeAndGenerate()" disabled>
+    ⊞ 구역 생성
+  </button>
+
+  <div class="sep"></div>
+
+  <!-- 편집 -->
+  <button class="btn btn-secondary" id="undoBtn" onclick="undoPoint()" disabled>
+    ↩ 취소
+  </button>
+  <button class="btn btn-danger" id="clearBtn" onclick="clearAll()" disabled>
+    ✕ 초기화
+  </button>
+
+  <div class="sep"></div>
+
+  <!-- 꼭짓점 팝업 -->
+  <div class="coords-trigger" id="coordsTrigger">
+    <div class="coords-badge" onclick="toggleCoords()">
+      꼭짓점 <span class="coord-count" id="coordCount">0</span>
+    </div>
+    <div class="popup" id="coordsPopup">
+      <div class="popup-title">꼭짓점 목록</div>
+      <div id="coordsList" class="coords-list">
+        <div class="coords-empty">아직 없음</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 상태 메시지 -->
+  <div class="sep"></div>
+  <div id="status" class="status-chip info">지도를 클릭해서 꼭짓점을 찍으세요 (최소 3개)</div>
+
+  <!-- 프로그레스 바 (툴바 하단) -->
+  <div class="progress-bar" id="progressBar">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+</div>
+
+<!-- ── 지도 ── -->
+<div class="map-wrap">
+  <div id="map"></div>
+  <canvas id="tileCanvas"></canvas>
+
+
+</div>
+
+<!-- ── 저장 모달 ── -->
+<div class="modal-backdrop" id="saveModal">
+  <div class="modal">
+    <div class="modal-title"> 파일로 저장</div>
+    <div class="modal-sub" id="modalSub"></div>
+    <input type="text" id="csvFilename" class="modal-input" placeholder="파일명을 입력하세요">
+    <div class="modal-hint">.csv + _polygon.json 두 파일이 저장됩니다</div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">취소</button>
+      <button class="btn btn-download" onclick="confirmDownload()">⬇ 저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── 팝업 토글 ─────────────────────────────────────────────────────
+function toggleCoords() {
+  const p = document.getElementById('coordsPopup');
+  p.classList.toggle('show');
+}
+document.addEventListener('click', e => {
+  if (!document.getElementById('coordsTrigger').contains(e.target))
+    document.getElementById('coordsPopup').classList.remove('show');
+});
+
+// ── 저장 모달 ─────────────────────────────────────────────────────
+function openSaveModal() {
+  const GRID_M = parseInt(document.getElementById('gridM').value);
+  document.getElementById('modalSub').textContent =
+    `셀 ${gridData.length}개 · ${GRID_M}m × ${GRID_M}m`;
+  document.getElementById('csvFilename').value = '';
+  document.getElementById('saveModal').classList.add('show');
+  setTimeout(() => document.getElementById('csvFilename').focus(), 180);
+}
+function closeModal() {
+  document.getElementById('saveModal').classList.remove('show');
+}
+function confirmDownload() {
+  downloadCSV();
+  closeModal();
+}
+document.getElementById('saveModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('saveModal')) closeModal();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+  if (e.key === 'Enter' && document.getElementById('saveModal').classList.contains('show')) confirmDownload();
+});
+
+// ── 지도 ──────────────────────────────────────────────────────────
+const map = L.map('map', { zoomControl:true }).setView([37.5665, 126.9780], 13);
+
+const detectTile = L.tileLayer(
+  'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+  { attribution: '© OpenStreetMap contributors' }
+).addTo(map);
+
+let points=[], markers=[], polyline=null, polygon=null;
+let gridRects=[], gridData=[];
+let waterSet = new Set();
+let allCandidates = [];
+let waterDetected = false;
+let gridDone = false;
+
+// ── 클릭 → 꼭짓점 ────────────────────────────────────────────────
+map.on('click', e => {
+  if (gridDone) return;
+  const { lat, lng } = e.latlng;
+  points.push({ lat, lng });
+  const m = L.circleMarker([lat,lng], {
+    radius:6, fillColor: '#111827', color: '#6b7280', weight:2, fillOpacity:1
+  }).bindTooltip(`${points.length}번 (${lat.toFixed(5)}, ${lng.toFixed(5)})`).addTo(map);
+  markers.push(m);
+  if (polyline) map.removeLayer(polyline);
+  if (points.length >= 2)
+    polyline = L.polyline(points.map(p=>[p.lat,p.lng]),
+      { color: '#9ca3af', weight:1.5, dashArray:'4 4' }).addTo(map);
+  waterDetected = false;
+  updateUI();
+});
+
+// ── Ray Casting ───────────────────────────────────────────────────
+function insidePoly(lat, lng, ring) {
+  let inside = false;
+  for (let i=0, j=ring.length-1; i<ring.length; j=i++) {
+    const yi=ring[i][0], xi=ring[i][1];
+    const yj=ring[j][0], xj=ring[j][1];
+    if (((yi>lat)!==(yj>lat))&&(lng<(xj-xi)*(lat-yi)/(yj-yi)+xi)) inside=!inside;
+  }
+  return inside;
+}
+
+// ── 위경도 → 타일 좌표 변환 ──────────────────────────────────────
+function latlngToTile(lat, lng, zoom) {
+  const n = Math.pow(2, zoom);
+  const x = Math.floor((lng + 180) / 360 * n);
+  const latRad = lat * Math.PI / 180;
+  const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1/Math.cos(latRad)) / Math.PI) / 2 * n);
+  return { x, y };
+}
+
+function latlngToPixel(lat, lng, zoom, tileX, tileY) {
+  const n   = Math.pow(2, zoom);
+  const px  = (lng + 180) / 360 * n * 256;
+  const latRad = lat * Math.PI / 180;
+  const py  = (1 - Math.log(Math.tan(latRad)+1/Math.cos(latRad))/Math.PI)/2 * n * 256;
+  return {
+    px: px - tileX * 256,
+    py: py - tileY * 256
+  };
+}
+
+// ── 타일 이미지 로드 ──────────────────────────────────────────────
+function loadTile(z, x, y) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    const sub = ['a','b','c'][Math.abs(x+y) % 3];
+    img.src = `https://${sub}.tile.openstreetmap.org/${z}/${x}/${y}.png`;
+    img.onload  = () => resolve(img);
+    img.onerror = () => resolve(null);
+  });
+}
+
+// ── 픽셀이 물인지 판별 ────────────────────────────────────────────
+function isWaterPixel(r, g, b) {
+  return (
+    r >= 140 && r <= 200 &&
+    g >= 190 && g <= 230 &&
+    b >= 210 && b <= 255 &&
+    b > g && g > r
+  );
+}
+
+// ── 구역 생성 (수계 감지 + 셀 분할 통합) ────────────────────────
+async function analyzeAndGenerate() {
+  if (points.length < 3) return;
+  document.getElementById('analyzeBtn').disabled = true;
+  waterSet.clear();
+  waterDetected = false;
+
+  const lats   = points.map(p=>p.lat);
+  const lngs   = points.map(p=>p.lng);
+  const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+  const midLat = (minLat+maxLat)/2;
+  const GRID_M   = parseInt(document.getElementById('gridM').value);
+  const LAT_STEP = GRID_M / 111_000;
+  const LNG_STEP = GRID_M / (111_000*Math.cos(midLat*Math.PI/180));
+  const regionCoords = points.map(p=>[p.lat,p.lng]);
+
+  allCandidates = [];
+  let gid = 0;
+  let lat = minLat;
+  while (lat < maxLat) {
+    let lng = minLng;
+    while (lng < maxLng) {
+      const cLat = lat+LAT_STEP/2, cLng = lng+LNG_STEP/2;
+      if (insidePoly(cLat, cLng, regionCoords)) {
+        allCandidates.push({ id:gid++, lat, lng, lat2:lat+LAT_STEP, lng2:lng+LNG_STEP, cLat, cLng });
+      }
+      lng += LNG_STEP;
+    }
+    lat += LAT_STEP;
+  }
+
+  setStatus('수계 분석 중...', 'loading');
+  const pb = document.getElementById('progressBar');
+  const pf = document.getElementById('progressFill');
+  pb.style.display='block'; pf.style.width='0%';
+
+  const zoom = GRID_M <= 100 ? 16 : GRID_M <= 200 ? 15 : 14;
+  const tileCache = {};
+  const total = allCandidates.length;
+
+  for (let i=0; i<total; i++) {
+    const g = allCandidates[i];
+    const corners = [
+      { lat: g.lat,  lng: g.lng  },
+      { lat: g.lat,  lng: g.lng2 },
+      { lat: g.lat2, lng: g.lng2 },
+      { lat: g.lat2, lng: g.lng  },
+    ];
+
+    const canvas = document.getElementById('tileCanvas');
+    const ctx    = canvas.getContext('2d');
+    let isWater  = false;
+
+    for (const corner of corners) {
+      if (isWater) break;
+      const tile = latlngToTile(corner.lat, corner.lng, zoom);
+      const key  = `${zoom}/${tile.x}/${tile.y}`;
+      if (!tileCache[key]) {
+        tileCache[key] = await loadTile(zoom, tile.x, tile.y);
+      }
+      const img = tileCache[key];
+      if (!img) continue;
+      canvas.width = 256; canvas.height = 256;
+      ctx.drawImage(img, 0, 0);
+      const px = latlngToPixel(corner.lat, corner.lng, zoom, tile.x, tile.y);
+      const x0 = Math.max(0, Math.min(255, Math.floor(px.px)));
+      const y0 = Math.max(0, Math.min(255, Math.floor(px.py)));
+      let waterCount = 0;
+      for (let dy=-1; dy<=1; dy++) {
+        for (let dx=-1; dx<=1; dx++) {
+          const sx = Math.max(0, Math.min(255, x0+dx));
+          const sy = Math.max(0, Math.min(255, y0+dy));
+          const pixel = ctx.getImageData(sx, sy, 1, 1).data;
+          if (isWaterPixel(pixel[0], pixel[1], pixel[2])) waterCount++;
+        }
+      }
+      if (waterCount >= 5) isWater = true;
+    }
+
+    if (isWater) waterSet.add(g.id);
+
+    if (i % 20 === 0) {
+      pf.style.width = ((i/total)*100).toFixed(0)+'%';
+      await new Promise(r => setTimeout(r, 0));
+    }
+  }
+
+  pf.style.width = '100%';
+  pb.style.display = 'none';
+
+  // ── 셀 분할 ──
+  gridRects.forEach(r=>map.removeLayer(r)); gridRects=[];
+  gridData=[];
+
+  if (polygon) map.removeLayer(polygon);
+  polygon = L.polygon(points.map(p=>[p.lat,p.lng]), {
+    color: '#111827', weight:2, fillColor: '#000000', fillOpacity:0.04
+  }).addTo(map);
+  if (polyline) { map.removeLayer(polyline); polyline=null; }
+  markers.forEach(m=>map.removeLayer(m)); markers=[];
+
+  let id=1, waterExcl=0;
+
+  for (const g of allCandidates) {
+    if (waterSet.has(g.id)) {
+      waterExcl++;
+      L.rectangle([[g.lat,g.lng],[g.lat2,g.lng2]], {
+        color: '#9ca3af', weight:0.3, fillColor: '#4b5563', fillOpacity:0.2, dashArray:'2 2'
+      }).bindTooltip('수계 제외').addTo(map);
+    } else {
+      gridData.push({
+        id,
+        centerLat: parseFloat(g.cLat.toFixed(6)),
+        centerLng: parseFloat(g.cLng.toFixed(6)),
+        swLat: parseFloat(g.lat.toFixed(6)),
+        swLng: parseFloat(g.lng.toFixed(6)),
+        neLat: parseFloat(g.lat2.toFixed(6)),
+        neLng: parseFloat(g.lng2.toFixed(6)),
+      });
+      const r = L.rectangle([[g.lat,g.lng],[g.lat2,g.lng2]], {
+        color: '#4b5563', weight:0.5, fillColor: '#9ca3af', fillOpacity:0.12
+      }).bindTooltip(`셀 ${id} | ${g.cLat.toFixed(5)}, ${g.cLng.toFixed(5)}`).addTo(map);
+      gridRects.push(r);
+      id++;
+    }
+  }
+
+  gridDone = true;
+  setStatus(`완료 — 셀 ${gridData.length}개 (수계 ${waterExcl}개 제외)`, 'success');
+  updateUI();
+  openSaveModal();
+}
+
+// ── CSV + JSON 저장 ───────────────────────────────────────────────
+function downloadCSV() {
+  const customName = document.getElementById('csvFilename').value.trim();
+  const defaultName = `grid_${document.getElementById('gridM').value}m_${gridData.length}cells`;
+  const baseName = (customName || defaultName).replace(/\.csv$/i,'');
+
+  const header = 'grid_id,center_lat,center_lng,sw_lat,sw_lng,ne_lat,ne_lng';
+  const rows   = gridData.map(g=>
+    `${g.id},${g.centerLat},${g.centerLng},${g.swLat},${g.swLng},${g.neLat},${g.neLng}`
+  );
+  const csvLink = Object.assign(document.createElement('a'), {
+    href:     URL.createObjectURL(new Blob([[header,...rows].join('\n')],{type:'text/csv'})),
+    download: baseName + '.csv'
+  });
+  csvLink.click();
+
+  const polygonJson = JSON.stringify({
+    polygon_coords: points.map(p => [
+      parseFloat(p.lat.toFixed(6)),
+      parseFloat(p.lng.toFixed(6))
+    ]),
+    grid_size_m: parseInt(document.getElementById('gridM').value),
+    grid_count:  gridData.length,
+    saved_at:    new Date().toISOString()
+  }, null, 2);
+
+  const jsonLink = Object.assign(document.createElement('a'), {
+    href:     URL.createObjectURL(new Blob([polygonJson], {type:'application/json'})),
+    download: baseName + '_polygon.json'
+  });
+  jsonLink.click();
+}
+
+// ── 취소 / 초기화 ─────────────────────────────────────────────────
+function undoPoint() {
+  if (!points.length || gridDone) return;
+  points.pop();
+  const m = markers.pop(); if(m) map.removeLayer(m);
+  if(polyline){map.removeLayer(polyline);polyline=null;}
+  if(points.length>=2)
+    polyline=L.polyline(points.map(p=>[p.lat,p.lng]),{color: '#9ca3af',weight:1.5,dashArray:'4 4'}).addTo(map);
+  waterDetected=false; updateUI();
+}
+
+function clearAll() {
+  points=[]; markers.forEach(m=>map.removeLayer(m)); markers=[];
+  gridRects.forEach(r=>map.removeLayer(r)); gridRects=[];
+  if(polyline){map.removeLayer(polyline);polyline=null;}
+  if(polygon) {map.removeLayer(polygon); polygon=null;}
+  gridData=[]; allCandidates=[]; waterSet.clear();
+  waterDetected=false; gridDone=false;
+  setStatus('지도를 클릭해서 꼭짓점을 찍으세요 (최소 3개)', 'info');
+  updateUI();
+}
+
+function setStatus(msg, type='') {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status-chip';
+  if (type === 'loading') el.classList.add('loading');
+  else if (type === 'success') el.classList.add('success');
+  else if (type === 'info') el.classList.add('info');
+}
+
+function updateUI() {
+  const n=points.length, done=gridDone;
+  document.getElementById('undoBtn').disabled    = n===0||done;
+  document.getElementById('clearBtn').disabled   = n===0&&!gridData.length;
+  document.getElementById('analyzeBtn').disabled = n<3||done;
+  document.getElementById('coordCount').textContent = n;
+  const list=document.getElementById('coordsList');
+  list.innerHTML = n===0
+    ? '<div class="coords-empty">아직 없음</div>'
+    : points.map((p,i)=>`
+        <div class="coord-item">
+          <span class="coord-num">${i+1}</span>
+          <span class="coord-text">${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</span>
+        </div>`).join('');
+}
+
+updateUI();
+</script>
+</body>
+</html>
