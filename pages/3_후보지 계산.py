@@ -171,6 +171,7 @@ def main():
         RANGE_KM  = float(user_input['range_km'])
         radar_num = int(user_input['radar_num'])
 
+        invalid_weight = False
         with st.status('후보지 계산 중...', expanded=False) as calc_status:
             # 1. 시설별 점수 계산
             set_score(dfs1, weight_dic)
@@ -180,6 +181,14 @@ def main():
             rank_dic, _,df_filtered_building = calc_rank(
                 dfs1, df_grid, RANGE_KM, radar_num, polygon_coords=grid_bd_points
             )
+
+            if rank_dic and next(iter(rank_dic.values())) <= 0:
+                calc_status.update(label='가중치 재설정 필요', state='error', expanded=False)
+                invalid_weight = True
+
+        if invalid_weight:
+            st.page_link("pages/2_후보지 조건 설정.py", label="조건 설정 페이지로 이동")
+            st.stop()
 
             # 3. 인구/밀도 데이터와 결합하여 최종 결과 생성
             df_population   = dfs2['population']

@@ -258,7 +258,6 @@ def calc_rank(dfs, df_grid, RANGE_KM, radar_num=50, polygon_coords=None):
             break
 
     return rank_dic, max_radar_num, df_building_filtered
-
 # ────────────────────────────────────────────────────────────────────────────────
 # 건물 태그별 가중치 설정
 # ────────────────────────────────────────────────────────────────────────────────
