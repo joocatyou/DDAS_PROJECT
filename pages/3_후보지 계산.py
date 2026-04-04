@@ -216,8 +216,8 @@ def main():
             name_list = st.session_state['user_input']['selected_weights']
             select_name_list = [name for name, weight in name_list.items() if weight != 0]
 
-            # 계산 결과를 세션에 저장
-            st.session_state['calc_results'] = {
+            if 'calc_results' not in st.session_state:
+                st.session_state['calc_results'] = {
                 'df_rank':             df_rank,
                 'dfs':                 df_filtered_building,
                 'range_km':            RANGE_KM,
