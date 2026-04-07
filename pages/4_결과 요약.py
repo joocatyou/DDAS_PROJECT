@@ -441,7 +441,7 @@ tab1, tab2, tab3 = st.tabs(['후보지 상세정보', '후보지 간 비교 1', 
 with tab1:
     # Tab 1 렌더링 후 선택된 순위를 받아 Tab 2 강조에 사용
     selected_rank = render_tab1(df_rank, df_buildings, cover_result, range_km)
-    st.write(df_buildings['tag'].unique())  # 실제 tag 값 확인
+    # st.write(df_buildings['tag'].unique())  # 실제 tag 값 확인
 
 
 
