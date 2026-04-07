@@ -17,13 +17,30 @@ CAT_KR = {
     'public': '국가 공공기관 시설', 'science': '과학연구', 'telecommunication': '정보통신시설',
     'transportation': '교통 항공 항만 시설', 'water': '수원 시설', 'frequency': '기지국',
 }
-CAT_ICON = {
-    'broadcast': ('orange', 'broadcast-tower'), 'electricity': ('green', 'bolt'),
-    'factory': ('blue', 'industry'), 'hospital': ('red', 'hospital'),
-    'infra': ('darkblue', 'cogs'), 'prison': ('black', 'university'),
-    'public': ('cadetblue', 'building'), 'science': ('pink', 'flask'),
-    'telecommunication': ('beige', 'satellite-dish'), 'transportation': ('darkgreen', 'train'),
-    'water': ('lightblue', 'tint'), 'frequency': ('darkred', 'signal'),
+# 카테고리별 folium 아이콘 매핑
+ICON_MAP = {
+    "방송국":         folium.Icon(color="orange",     icon="broadcast-tower",   prefix="fa"),
+    "변전소":       folium.Icon(color="green",      icon="bolt",              prefix="fa"),
+    "산업시설":           folium.Icon(color="blue",       icon="industry",          prefix="fa"),
+    "병원":          folium.Icon(color="red",        icon="hospital",          prefix="fa"),
+    "혈액원":          folium.Icon(color="red",        icon="hospital",          prefix="fa"),
+    
+    "지하공동구":             folium.Icon(color="darkblue",   icon="cogs",              prefix="fa"),
+    "교정 시설":            folium.Icon(color="black",      icon="university",        prefix="fa"),
+    "지방행정기관":            folium.Icon(color="cadetblue",  icon="building",          prefix="fa"),
+    "중앙행정기관":            folium.Icon(color="cadetblue",  icon="building",          prefix="fa"),
+    "국가유산":            folium.Icon(color="cadetblue",  icon="building",          prefix="fa"),
+    
+    "과학연구":           folium.Icon(color="purple",     icon="flask",             prefix="fa"),
+    "정보통신시설": folium.Icon(color="beige",      icon="satellite-dish",    prefix="fa"),
+    "통신망": folium.Icon(color="beige",      icon="satellite-dish",    prefix="fa"),
+    "금융": folium.Icon(color="beige",      icon="satellite-dish",    prefix="fa"),
+    
+    "터널":    folium.Icon(color="darkgreen",  icon="train",             prefix="fa"),
+    "교량":    folium.Icon(color="darkgreen",  icon="train",             prefix="fa"),
+    
+    "배수지":             folium.Icon(color="cadetblue",  icon="tint",              prefix="fa"),
+    "기지국":         folium.Icon(color="darkred",    icon="signal",            prefix="fa"),
 }
 # 카테고리별 차트 색상 팔레트
 PALETTE = ['#E57535','#72AF26','#38AADD','#D43D2A','#00375D','#3D3D3D','#436978','#E07DBF','#CBBE73','#728224','#A3CAC5','#A23336']
@@ -82,9 +99,12 @@ def build_coverage_map(candidate, covered_df, range_km):
     # 베이스맵 타일 추가
     folium.TileLayer(
         tiles='https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+
         attr='© OpenStreetMap contributors',
-        show=True,
-    ).add_to(m)
+
+        name='Layer',
+        show=True
+        ).add_to(m)
 
     # 커버리지 반경 원 표시
     folium.Circle(
@@ -114,18 +134,19 @@ def build_coverage_map(candidate, covered_df, range_km):
         cat_df = covered_df[covered_df['tag'] == cat]
         layer = folium.FeatureGroup(name=f"{CAT_KR.get(cat, cat)} ({len(cat_df)}개)", show=True)
         mc = MarkerCluster().add_to(layer)
-        color, icon_name = CAT_ICON.get(cat, ('blue', 'info-sign'))
 
         for _, row in cat_df.iterrows():
             # 건물명 컬럼명이 다를 수 있으므로 순서대로 탐색
             name = row.get('name', row.get('시설명', row.get('건물명', '')))
             folium.Marker(
                 location=[row['latitude'], row['longitude']],
+                tooltip=name,
                 popup=folium.Popup(
                     f"<b>{name}</b><br>{CAT_KR.get(cat, cat)}",
                     max_width=250,
                 ),
-                icon=folium.Icon(color=color, icon=icon_name, prefix='fa'),
+                # visualize.py 방식과 동일: 마커마다 ICON_MAP에서 직접 조회
+                icon=ICON_MAP.get(cat, folium.Icon(color="gray", icon="question", prefix="fa")),
             ).add_to(mc)
 
         layer.add_to(m)
@@ -420,6 +441,10 @@ tab1, tab2, tab3 = st.tabs(['후보지 상세정보', '후보지 간 비교 1', 
 with tab1:
     # Tab 1 렌더링 후 선택된 순위를 받아 Tab 2 강조에 사용
     selected_rank = render_tab1(df_rank, df_buildings, cover_result, range_km)
+    st.write(df_buildings['tag'].unique())  # 실제 tag 값 확인
+
+
+
 
 with tab2:
     render_tab2(df_rank, df_buildings, cover_result, selected_rank)
