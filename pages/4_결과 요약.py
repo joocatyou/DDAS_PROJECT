@@ -10,9 +10,13 @@ from utils import set_common_banner
 st.set_page_config(layout="wide")
 set_common_banner()
 
+
+
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
     st.error("로그인이 필요합니다.")
     st.stop()  # 이 아래 코드는 실행되지 않음
+
+
 
 # ── 카테고리 한글 매핑 및 아이콘/색상 정의 ──────────────────────────────────
 CAT_KR = {
@@ -64,6 +68,20 @@ def load_session_data():
         results['range_km'],      # 커버리지 반경 (km)
         results['weights'],       # 카테고리별 가중치
     )
+
+# ── 도움말 함수 ─────────────────────────────────────────────────
+@st.dialog(" ", width="medium")
+def render_help():
+    """
+    결과 요약 페이지의 도움말 다이얼로그를 렌더링한다.
+
+    3단계에서 계산된 후보지 간 비교를 위한
+    그래프·표 제공 목적을 안내한다.
+    """
+    st.subheader('도움말')
+    st.write("이 페이지는 **3단계 계산을 통해 선정된 예비 후보지들**의 상세 내용과 후보지들 간의 원할한 비교를 위해 그래프와 표 등을 제공합니다.")
+    st.write("")
+    st.warning('가장 마지막에 분석을 시행한 시나리오에 대한 내용입니다.')
 
 
 # ── 커버리지 계산 (캐시 적용) ─────────────────────────────────────────────────
@@ -208,7 +226,7 @@ def render_tab1(df_rank, df_buildings, cover_result, range_km):
             # 요약 메트릭 표시
             st.metric("순위",         f"{selected_rank}위")
             st.metric("커버 건물 수", f"{len(covered_idx)}개")
-            st.metric("가중치 점수",  f"{candidate['score']:.4f}")
+            st.metric("최종점수 (정규화 후)",  f"{candidate['score']:.4f}")
             st.metric("반경",         f"{range_km} km")
 
     with col_map:
@@ -439,7 +457,14 @@ scores = df_rank['score'].tolist()
 # 엘보우 포인트 인덱스 계산
 elbow_idx = compute_elbow_index(scores)
 
-st.subheader("결과 요약")
+# 페이지 헤더 + 도움말 버튼
+header_col, help_col = st.columns([10, 1])
+with header_col:
+    st.subheader("결과 요약")
+with help_col:
+    st.write("")  # 수직 정렬용 여백
+    if st.button("도움말"):
+        render_help()
 tab1, tab2, tab3 = st.tabs(['후보지 상세정보', '후보지 간 비교 1', '후보지 간 비교 2'])
 
 with tab1:
