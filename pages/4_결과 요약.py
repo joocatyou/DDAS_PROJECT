@@ -10,6 +10,10 @@ from utils import set_common_banner
 st.set_page_config(layout="wide")
 set_common_banner()
 
+if "logged_in" not in st.session_state or not st.session_state.logged_in:
+    st.error("로그인이 필요합니다.")
+    st.stop()  # 이 아래 코드는 실행되지 않음
+
 # ── 카테고리 한글 매핑 및 아이콘/색상 정의 ──────────────────────────────────
 CAT_KR = {
     'broadcast': '방송시설', 'electricity': '전력시설', 'factory': '산업 시설',

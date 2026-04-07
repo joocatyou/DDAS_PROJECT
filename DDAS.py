@@ -144,7 +144,10 @@ if sub_butt:
     with conn.cursor() as cursor:
         sql = "SELECT * FROM users WHERE user_id = %s AND password = %s"
         cursor.execute(sql, (input_sender, input_recipient))
+        
 
         if cursor.fetchone():
             st.session_state.logged_in = True
             st.switch_page("pages/1_데이터 탐색.py")
+        
+

@@ -2,6 +2,10 @@ import streamlit as st
 import pymysql
 import base64
 
+def require_login():
+    if "logged_in" not in st.session_state or not st.session_state.logged_in:
+        st.switch_page("DDAS.py")
+
 def apply_input_style():
     st.markdown("""
     <style>
